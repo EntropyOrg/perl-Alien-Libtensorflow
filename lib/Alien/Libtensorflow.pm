@@ -5,8 +5,5 @@ use strict;
 use warnings;
 
 use parent qw(Alien::Base);
-use Role::Tiny::With qw( with );
-
-with 'Alien::Role::Dino';
 
 1;

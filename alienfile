@@ -91,7 +91,5 @@ share {
 		$build->runtime_prop->{cflags}  = $cflags;
 		$build->runtime_prop->{libs}    = $libs;
 	};
-
-	plugin 'Gather::Dino';
 };
 
