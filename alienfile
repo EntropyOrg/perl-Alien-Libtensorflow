@@ -1,0 +1,97 @@
+use alienfile;
+
+use strict;
+use warnings;
+use Config;
+use File::Spec;
+
+my %os_dynamic_lib = (
+	'linux' => 'libtensorflow.so.2',
+	'darwin' => 'libtensorflow.2.dylib',
+	'MSWin32' => 'tensorflow.dll',
+);
+my %perl_os_to_tf_os = (
+	'linux' => 'linux',
+	'darwin' => 'darwin',
+	'MSWin32' => 'windows',
+);
+my %perl_os_to_archive_ext = (
+	'linux' => 'tar.gz',
+	'darwin' => 'tar.gz',
+	'MSWin32' => 'zip',
+);
+
+probe sub {
+	# linux: ./lib/libtensorflow.so.2
+	# darwin: ./lib/libtensorflow.2.dylib
+	# win32: ./lib/tensorflow.dll
+
+	my @prefix = ( "/usr/local" );
+
+	for my $prefix (@prefix) {
+		my $dylib_path = File::Spec->catfile(
+			$prefix, qw(lib),
+			$os_dynamic_lib{ $^O }
+		);
+		return 'system' if -f $dylib_path;
+	}
+
+	return 'share';
+};
+
+share {
+	requires 'File::Copy::Recursive' => 0;
+	requires 'HTTP::Tiny' => 0;
+	requires 'Net::SSLeay' => 0;
+	requires 'IO::Socket::SSL' => 0;
+	requires 'Mojo::JSON';
+
+	my $bit = defined $Config{'archname64'} ? 64 : 32;
+	die "Only 64-bit install supported at this time" unless $bit == 64;
+
+	my $proc_type = "cpu"; # cpu|gpu
+	my $arch = "x86_64"; # all downloads are for x86_64 at this time
+	my $re = qr/
+		^
+		libtensorflow-
+		\Q$proc_type\E-
+		\Q@{[ $perl_os_to_tf_os{$^O} ]}\E-
+		\Q$arch\E-
+		(?<version> .* )
+		\. \Q@{[ $perl_os_to_archive_ext{ $^O } ]}\E
+		$
+	/x;
+	plugin Download => (
+		url => "https://www.tensorflow.org/install/lang_c",
+		version => $re,
+	);
+
+	plugin 'Extract' => $perl_os_to_archive_ext{ $^O };
+
+	build [
+		sub {
+			my ($build) = @_;
+			$build->log("copy to prefix");
+			my $prefix_abs = $build->install_prop->{prefix};
+			File::Copy::Recursive::dircopy( '.', $prefix_abs );
+		},
+	];
+
+	gather sub {
+		my($build) = @_;
+		my $prefix = $build->runtime_prop->{prefix};
+
+		my $include_path = File::Spec->catfile($prefix, qw(include));
+		my $lib_path = File::Spec->catfile($prefix, qw(lib));
+
+		my $cflags = "-I$include_path";
+		my @ldlibs = "-ltensorflow";
+		my $libs = join " ", "-L$lib_path", @ldlibs;
+
+		$build->runtime_prop->{cflags}  = $cflags;
+		$build->runtime_prop->{libs}    = $libs;
+	};
+
+	plugin 'Gather::Dino';
+};
+
