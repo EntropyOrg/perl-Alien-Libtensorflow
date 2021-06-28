@@ -4,11 +4,17 @@ use strict;
 use warnings;
 use Config;
 use File::Spec;
+use File::Find;
+use File::Copy;
 
 my %os_dynamic_lib = (
 	'linux' => 'libtensorflow.so.2',
 	'darwin' => 'libtensorflow.2.dylib',
 	'MSWin32' => 'tensorflow.dll',
+);
+my %other_os_dynamic_lib = (
+	'linux' => 'libtensorflow_framework.so.2',
+	'darwin' => 'libtensorflow_framework.2.dylib',
 );
 my %perl_os_to_tf_os = (
 	'linux' => 'linux',
@@ -40,7 +46,6 @@ probe sub {
 };
 
 share {
-	requires 'File::Copy::Recursive' => 0;
 	requires 'HTTP::Tiny' => 0;
 	requires 'Net::SSLeay' => 0;
 	requires 'IO::Socket::SSL' => 0;
@@ -68,14 +73,33 @@ share {
 
 	plugin 'Extract' => $perl_os_to_archive_ext{ $^O };
 
-	build [
+	patch [
 		sub {
 			my ($build) = @_;
-			$build->log("copy to prefix");
-			my $prefix_abs = $build->install_prop->{prefix};
-			File::Copy::Recursive::dircopy( '.', $prefix_abs );
+			my $lib_dir = 'lib';
+			# This is because ExtUtils::Install uses File::Copy::copy()
+			# which does not handle symlinks (it copies the
+			# contents of what the symlinks point to).
+			$build->log("Only keep one copy of library, no symlinks");
+			for my $lib ( map { exists $_->{$^O} ? $_->{$^O} : () } \%os_dynamic_lib, \%other_os_dynamic_lib ) {
+				my $lib_symlink = File::Spec->catfile($lib_dir, $lib );
+				next unless -l $lib_symlink;
+				$build->log( "Processing $lib" );
+
+				my $lib_file = $lib_symlink;
+				$lib_file = File::Spec->rel2abs(readlink $lib_file, $lib_dir) while -l $lib_file;
+
+				unlink $lib_symlink;
+				File::Copy::move($lib_file , $lib_symlink);
+			}
+
+			my @symlinks;
+			find(sub { push @symlinks, $File::Find::name if -l }, $lib_dir);
+			unlink @symlinks;
 		},
 	];
+
+	plugin 'Build::Copy';
 
 	gather sub {
 		my($build) = @_;
