@@ -138,6 +138,7 @@ share {
 	requires 'Net::SSLeay' => 0;
 	requires 'IO::Socket::SSL' => 0;
 	requires 'File::Which';
+	requires 'Alien::Build::Plugin::Download::GitHub' => 0.10;
 
 	$ENV{ALIEN_LIBTENSORFLOW_FROM_BINARY_ALLOW_RELEASE_CANDIDATES} ||= 0;
 
