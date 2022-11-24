@@ -11,7 +11,8 @@ use File::Copy;
 #
 # - ALIEN_LIBTENSORFLOW_FROM_BINARY_VERSION
 #
-#   Filter of version to download (e.g., "2.9.3")
+#   Filter of version to download (e.g., "2.9.3" to download
+#   libtensorflow v2.9.3).
 #
 # - ALIEN_LIBTENSORFLOW_FROM_BINARY_ALLOW_RELEASE_CANDIDATES
 #
@@ -19,7 +20,12 @@ use File::Copy;
 #
 # - ALIEN_LIBTENSORFLOW_FROM_SOURCE
 #
-#   Boolean that builds libtensorflow from source (default: 0)
+#   Boolean to control if libtensorflow is built from source (default: 0).
+#
+#   When set to 0, will attempt to download binary if available for platform
+#   and builds from source otherwise.
+#
+#   When set to 1, always builds from source.
 #
 # - ALIEN_LIBTENSORFLOW_FROM_SOURCE_BUILD_TYPE
 #
@@ -34,12 +40,12 @@ use File::Copy;
 #
 # - ALIEN_LIBTENSORFLOW_DEVICE_TYPE
 #
-#   Which type of device type to use for binary release.
+#   Which device type to use for binary release.
 #
 #   Values:
 #     - "auto": automatically detect type (default)
 #     - "cpu": CPU
-#     - "gpu": GPU (Nvidia)
+#     - "gpu": GPU (Currently only Nvidia)
 use Env qw(
 	ALIEN_LIBTENSORFLOW_FROM_BINARY_VERSION
 	ALIEN_LIBTENSORFLOW_FROM_BINARY_ALLOW_RELEASE_CANDIDATES
