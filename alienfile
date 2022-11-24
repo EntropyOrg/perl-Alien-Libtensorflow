@@ -6,6 +6,8 @@ use Config;
 use File::Spec;
 use File::Find;
 use File::Copy;
+use Path::Tiny;
+use URI;
 
 # Settings:
 #
@@ -143,6 +145,7 @@ share {
 	requires 'HTTP::Tiny' => 0;
 	requires 'Net::SSLeay' => 0;
 	requires 'IO::Socket::SSL' => 0;
+	requires 'URI' => 0;
 	requires 'File::Which';
 	requires 'Alien::Build::Plugin::Download::GitHub' => 0.10;
 
@@ -188,14 +191,13 @@ share {
 		}x;
 
 		my $bucket_url = 'https://storage.googleapis.com/tensorflow/';
-		start_url join ('',
-			$bucket_url,
-			'?prefix=',
+		my $start_url = URI->new($bucket_url);
+		$start_url->query_form( prefix => join('',
 			$data->{bucket_prefix},
 			'-',
 			$version_filter,
-		);
-
+		));
+		start_url $start_url;
 		plugin 'Decode::Mojo';
 		meta->around_hook( fetch => sub {
 			my $orig = shift;
@@ -205,6 +207,7 @@ share {
 
 			if( $fetched->{filename} eq 'tensorflow' ) {
 				# bucket data
+				$fetched->{content} = path($fetched->{path})->slurp_raw if ! exists $fetched->{content} && exists $fetched->{path};
 				my $xml = $build->meta_prop->{plugin_decode_mojo_class}->new( $fetched->{content} );
 				my $list = $xml->find('Key')->map(sub{
 					my $content = $_[0]->content;
@@ -213,6 +216,7 @@ share {
 						filename => $filename,
 						version  => do { $filename =~ $re && $1 },
 						url      => do { join '', $bucket_url, $content },
+						protocol => 'https',
 					};
 
 					if( ! $ALIEN_LIBTENSORFLOW_FROM_BINARY_ALLOW_RELEASE_CANDIDATES && $bucket_item->{version} =~ /-rc/ ) {
