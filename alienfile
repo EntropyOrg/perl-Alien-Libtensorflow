@@ -242,7 +242,15 @@ share {
 			prefer  => 1,
 		);
 
-		plugin 'Extract' => $data->{bucket_format};
+		if( $data->{bucket_format} eq 'tar.gz' ) {
+			# Extract::CommandLine more reliable than
+			# Extract::ArchiveTar for large .tar.gz.
+			#
+			# Extract::ArchiveTar gives an "Out of memory!" error.
+			plugin 'Extract::CommandLine' => $data->{bucket_format};
+		} else {
+			plugin 'Extract' => $data->{bucket_format};
+		}
 
 		patch [
 			sub {
