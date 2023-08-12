@@ -1,3 +1,13 @@
+  Bug fixes
+
+   - More reliable extraction of `.tar.gz` with Extract::CommandLine.
+     <https://github.com/EntropyOrg/perl-Alien-Libtensorflow/pull/4>.
+
+  Build changes
+
+   - Add dependency on FFI::Platypus as TestRecommends.
+     <https://github.com/EntropyOrg/perl-Alien-Libtensorflow/pull/5>.
+
 0.002 2022-11-24 20:33:57-0500
 
   Features
